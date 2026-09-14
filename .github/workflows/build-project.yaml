@@ -241,6 +241,9 @@ jobs:
           target: x64
           config: ${{ needs.check-event.outputs.config }}
 
+      - name: Test cloud queue
+        run: ctest --test-dir build_x64 -C ${{ needs.check-event.outputs.config }} --output-on-failure
+
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin
         with:
