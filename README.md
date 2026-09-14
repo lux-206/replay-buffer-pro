@@ -32,6 +32,27 @@ The project website is currently hosted via GitHub Pages.
 ### Hotkeys
 - Assign hotkeys to each save duration button in OBS Settings > Hotkeys
 
+## Google Drive Cloud Clips
+
+The Windows build can upload verified, trimmed clips to Google Drive without blocking OBS. Cloud upload is disabled by default, so the original behavior is unchanged until it is enabled.
+
+### Google Cloud setup
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create or select a project and enable **Google Drive API**.
+2. Configure the OAuth consent screen and add your Google account as a test user while the app is in testing.
+3. Create an OAuth 2.0 Client ID with application type **Desktop app**.
+4. In the Replay Buffer Pro dock, open **Cloud Upload**, enter the client ID and client secret, and select **Connect Google Account**.
+5. Approve access in the browser. The callback uses a temporary random localhost port and closes after authorization.
+6. Enable cloud upload and choose the destination root (default: `OBS Clips`).
+
+Tokens and OAuth client credentials are encrypted with Windows DPAPI and tied to the current Windows user. They are never written to settings JSON or logs. The requested Drive scope is `drive.file`.
+
+Clips are staged under `%LOCALAPPDATA%\OBSCloudClips\temp`, persisted in `%LOCALAPPDATA%\OBSCloudClips\queue.json`, and uploaded by one background worker using the Drive API v3 resumable protocol. Files are organized as `OBS Clips/YYYY-MM-DD/`. The plugin fetches remote metadata and compares sizes before deleting the temporary copy. With **Delete local file after successful upload** disabled, the finished clip remains in the OBS recordings directory and only its staging copy is removed.
+
+If the network or API is unavailable, the staged file and job are retained. Retries use bounded backoff (5s, 15s, 30s, 60s, then 5min). On restart, interrupted jobs return to pending. Shutdown stops accepting jobs, persists the queue, and uses a bounded timeout for an active request.
+
+Known v1 limitations: cloud upload and secure credential storage are Windows-only; one upload runs at a time; OAuth credentials must be supplied by the user; interrupted uploads create a new resumable session after restart.
+
 ## Installation
 
 ### From Release

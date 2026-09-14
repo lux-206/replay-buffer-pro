@@ -15,6 +15,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <stdexcept>
@@ -84,6 +85,9 @@ namespace ReplayBufferPro
      * @param savedPath Path OBS reported for the saved replay, may be empty
      */
     void handleSaveCompleted(const std::string &savedPath);
+
+    /** Called on the trim worker after the verified final clip is immutable. */
+    void setClipReadyCallback(std::function<void(const std::string &)> callback);
 
   private:
     //=========================================================================
@@ -201,6 +205,7 @@ namespace ReplayBufferPro
     std::deque<TrimJob> jobQueue;    ///< Files awaiting trimming
     std::thread worker;              ///< Owned so trims cannot outlive the manager
     bool stopping = false;           ///< Tells the worker to drain and exit
+    std::function<void(const std::string &)> clipReadyCallback;
   };
 
 } // namespace ReplayBufferPro

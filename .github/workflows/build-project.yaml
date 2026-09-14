@@ -241,6 +241,14 @@ jobs:
           target: x64
           config: ${{ needs.check-event.outputs.config }}
 
+      - name: Test cloud queue
+        run: |
+          $QtBin = Get-ChildItem -Path .deps -Filter Qt6Core.dll -Recurse |
+            Select-Object -First 1 -ExpandProperty DirectoryName
+          if (-not $QtBin) { throw "Qt6Core.dll directory not found" }
+          $env:PATH = "$QtBin;$env:PATH"
+          ctest --test-dir build_x64 -C ${{ needs.check-event.outputs.config }} --output-on-failure
+
       - name: Package Plugin 📀
         uses: ./.github/actions/package-plugin
         with:

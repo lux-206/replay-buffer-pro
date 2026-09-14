@@ -168,3 +168,6 @@ Replay Buffer Pro is an independent project and is not affiliated with, endorsed
 Last Updated: 2026-08-14
 Version: 1.6.0
 
+# Google Drive Cloud Clips
+
+The Windows plugin optionally uploads verified trimmed clips to dated folders in Google Drive. It uses a persistent background queue, resumable Drive API v3 uploads, bounded retry, remote size verification, and Windows DPAPI for OAuth secrets. Configure it from Cloud Upload in the Replay Buffer Pro dock. Cloud upload is disabled by default.

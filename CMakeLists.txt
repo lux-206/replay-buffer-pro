@@ -22,8 +22,8 @@ if(ENABLE_FRONTEND_API)
 endif()
 
 if(ENABLE_QT)
-  find_package(Qt6 REQUIRED COMPONENTS Widgets Core)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
+  find_package(Qt6 REQUIRED COMPONENTS Widgets Core Network)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets Qt6::Network)
   
   # On macOS, remove AGL from Qt6 targets (AGL is deprecated/removed in modern macOS but Qt6 still references it)
   if(OS_MACOS)
@@ -98,9 +98,40 @@ target_sources(
     src/managers/hotkey-manager.cpp
     src/managers/hotkey-manager.hpp
     src/config/config.hpp
+    src/cloud/cloud-provider.hpp
+    src/cloud/cloud-settings.cpp
+    src/cloud/cloud-settings.hpp
+    src/cloud/cloud-upload-manager.cpp
+    src/cloud/cloud-upload-manager.hpp
+    src/cloud/credential-store.cpp
+    src/cloud/credential-store.hpp
+    src/cloud/google-auth.cpp
+    src/cloud/google-auth.hpp
+    src/cloud/google-drive-provider.cpp
+    src/cloud/google-drive-provider.hpp
+    src/cloud/upload-job.cpp
+    src/cloud/upload-job.hpp
+    src/cloud/upload-queue.cpp
+    src/cloud/upload-queue.hpp
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src)
+
+if(OS_WINDOWS)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Crypt32)
+endif()
+
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(cloud-queue-tests
+    tests/cloud-queue-tests.cpp
+    src/cloud/upload-job.cpp
+    src/cloud/upload-queue.cpp
+  )
+  target_include_directories(cloud-queue-tests PRIVATE src)
+  target_link_libraries(cloud-queue-tests PRIVATE Qt6::Core)
+  add_test(NAME cloud-queue-tests COMMAND cloud-queue-tests)
+endif()
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
 

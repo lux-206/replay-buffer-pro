@@ -84,6 +84,12 @@ namespace ReplayBufferPro
     }
   }
 
+  void ReplayBufferManager::setClipReadyCallback(std::function<void(const std::string &)> callback)
+  {
+    std::lock_guard<std::mutex> lock(jobMutex);
+    clipReadyCallback = std::move(callback);
+  }
+
   //=============================================================================
   // REPLAY BUFFER OPERATIONS
   //=============================================================================
@@ -380,6 +386,17 @@ namespace ReplayBufferPro
     }
 
     line += " elapsed=" + QString::number(elapsedSeconds(), 'f', 1).toStdString() + "s";
+
+    std::function<void(const std::string &)> callback;
+    {
+      std::lock_guard<std::mutex> lock(jobMutex);
+      callback = clipReadyCallback;
+    }
+    if (callback)
+    {
+      Logger::info("[CloudClips] Clip ready: %s", finalPath.c_str());
+      callback(finalPath);
+    }
 
     reportVerdict("ok", line,
                   QString(obs_module_text("StatusTrimSuccess"))

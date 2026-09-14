@@ -23,6 +23,10 @@
 #include <QFormLayout>
 #include <QSpinBox>
 #include <QPushButton>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QLabel>
+#include <QLineEdit>
 
 // STL includes
 #include <string>
@@ -45,7 +49,11 @@ namespace ReplayBufferPro
 			  lastKnownBufferLength(0)
 	{
 		// Create component instances
+		cloudUploadManager = new Cloud::CloudUploadManager();
 		replayManager = new ReplayBufferManager(this);
+		replayManager->setClipReadyCallback([this](const std::string &path) {
+			if (cloudUploadManager) cloudUploadManager->enqueueClip(path);
+		});
 		settingsManager = new SettingsManager();
 		saveButtonSettings = new SaveButtonSettings();
 		saveButtonSettings->load();
@@ -54,7 +62,8 @@ namespace ReplayBufferPro
 		ui = new UIComponents(this, 
 			[this](int duration) { handleSaveSegment(duration); },
 			[this]() { handleSaveFullBuffer(); },
-			[this]() { handleCustomizeSaveButtons(); }
+			[this]() { handleCustomizeSaveButtons(); },
+			[this]() { handleCloudSettings(); }
 		);
 		ui->setSaveButtonDurations(saveButtonSettings->getDurations());
 		
@@ -87,6 +96,7 @@ namespace ReplayBufferPro
 		settingsMonitorTimer->setInterval(Config::SETTINGS_MONITOR_INTERVAL);
 		connect(settingsMonitorTimer, &QTimer::timeout, this, &Plugin::loadBufferLength);
 		settingsMonitorTimer->start();
+		ui->updateCloudStatus(cloudUploadManager->isConnected(), cloudUploadManager->pendingCount());
 	}
 
 	// Removed QMainWindow-based constructor; OBS wraps QWidget into a dock
@@ -100,6 +110,11 @@ namespace ReplayBufferPro
 		
 		// Remove OBS callbacks before destroying components
 		obs_frontend_remove_event_callback(handleOBSEvent, this);
+		replayManager->setClipReadyCallback({});
+		delete replayManager;
+		replayManager = nullptr;
+		delete cloudUploadManager;
+		cloudUploadManager = nullptr;
 		
 		// Clean up managers that were allocated with new
 		delete hotkeyManager;
@@ -191,6 +206,82 @@ namespace ReplayBufferPro
 	void Plugin::handleSaveSegment(int duration)
 	{
 		replayManager->saveSegment(duration, this);
+	}
+
+	void Plugin::handleCloudSettings()
+	{
+		Cloud::CloudSettings settings = cloudUploadManager->settings();
+		QDialog dialog(this);
+		dialog.setWindowTitle(obs_module_text("CloudSettingsTitle"));
+		auto *layout = new QVBoxLayout(&dialog);
+		auto *form = new QFormLayout();
+		auto *enabled = new QCheckBox(&dialog);
+		enabled->setChecked(settings.enabled);
+		auto *provider = new QComboBox(&dialog);
+		provider->addItem("Google Drive");
+		provider->setEnabled(false);
+		auto *account = new QLabel(cloudUploadManager->isConnected()
+			? obs_module_text("CloudConnected") : obs_module_text("CloudNotConnected"), &dialog);
+		auto *destination = new QLineEdit(QString::fromStdString(settings.destination), &dialog);
+		auto *deleteLocal = new QCheckBox(&dialog);
+		deleteLocal->setChecked(settings.deleteLocalAfterUpload);
+		auto *retry = new QCheckBox(&dialog);
+		retry->setChecked(settings.retryFailedUploads);
+		auto *concurrency = new QSpinBox(&dialog);
+		concurrency->setRange(1, 1);
+		concurrency->setValue(1);
+		auto *clientId = new QLineEdit(&dialog);
+		auto *clientSecret = new QLineEdit(&dialog);
+		clientSecret->setEchoMode(QLineEdit::Password);
+		clientSecret->setPlaceholderText("Stored encrypted with Windows DPAPI");
+		form->addRow(obs_module_text("CloudEnable"), enabled);
+		form->addRow(obs_module_text("CloudProvider"), provider);
+		form->addRow(obs_module_text("CloudClientId"), clientId);
+		form->addRow(obs_module_text("CloudClientSecret"), clientSecret);
+		form->addRow(obs_module_text("CloudDestination"), destination);
+		form->addRow(obs_module_text("CloudDeleteLocal"), deleteLocal);
+		form->addRow(obs_module_text("CloudRetry"), retry);
+		form->addRow(obs_module_text("CloudConcurrent"), concurrency);
+		form->addRow(obs_module_text("CloudPending"), new QLabel(QString::number(cloudUploadManager->pendingCount()), &dialog));
+		form->addRow("Google account", account);
+		layout->addLayout(form);
+
+		auto *accountButtons = new QHBoxLayout();
+		auto *connectButton = new QPushButton(obs_module_text("CloudConnect"), &dialog);
+		auto *disconnectButton = new QPushButton(obs_module_text("CloudDisconnect"), &dialog);
+		accountButtons->addWidget(connectButton);
+		accountButtons->addWidget(disconnectButton);
+		layout->addLayout(accountButtons);
+		connect(connectButton, &QPushButton::clicked, &dialog, [&, this] {
+			std::string error;
+			if (cloudUploadManager->connectGoogle(clientId->text().toStdString(),
+				clientSecret->text().toStdString(), &dialog, &error)) {
+				account->setText(obs_module_text("CloudConnected"));
+				clientSecret->clear();
+			} else {
+				QMessageBox::warning(&dialog, obs_module_text("Error"), QString::fromStdString(error));
+			}
+		});
+		connect(disconnectButton, &QPushButton::clicked, &dialog, [&, this] {
+			std::string error;
+			if (cloudUploadManager->disconnectGoogle(&error)) account->setText(obs_module_text("CloudNotConnected"));
+			else QMessageBox::warning(&dialog, obs_module_text("Error"), QString::fromStdString(error));
+		});
+
+		auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+		connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+		connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+		layout->addWidget(buttons);
+		if (dialog.exec() == QDialog::Accepted) {
+			settings.enabled = enabled->isChecked();
+			settings.destination = destination->text().trimmed().toStdString();
+			settings.deleteLocalAfterUpload = deleteLocal->isChecked();
+			settings.retryFailedUploads = retry->isChecked();
+			std::string error;
+			if (!cloudUploadManager->updateSettings(settings, &error))
+				QMessageBox::warning(this, obs_module_text("Error"), QString::fromStdString(error));
+		}
+		ui->updateCloudStatus(cloudUploadManager->isConnected(), cloudUploadManager->pendingCount());
 	}
 
 	void Plugin::handleReplayBufferSaved()
@@ -290,6 +381,8 @@ namespace ReplayBufferPro
 			lastKnownBufferLength = bufferLength;
 			ui->updateBufferLengthValue(bufferLength);
 		}
+		if (ui && cloudUploadManager)
+			ui->updateCloudStatus(cloudUploadManager->isConnected(), cloudUploadManager->pendingCount());
 	}
 
 } // namespace ReplayBufferPro

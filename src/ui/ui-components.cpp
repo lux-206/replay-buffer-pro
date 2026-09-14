@@ -54,14 +54,18 @@ namespace ReplayBufferPro
   UIComponents::UIComponents(QWidget *parent,
                              std::function<void(int)> saveSegmentCallback,
                              std::function<void()> saveFullBufferCallback,
-                             std::function<void()> customizeSaveButtonsCallback)
+                             std::function<void()> customizeSaveButtonsCallback,
+                             std::function<void()> cloudSettingsCallback)
       : secondsEdit(nullptr),
         saveFullBufferBtn(nullptr),
         customizeSaveButtonsBtn(nullptr),
+        cloudSettingsBtn(nullptr),
+        cloudStatusLabel(nullptr),
         bufferLengthDebounceTimer(new QTimer(parent)),
         onSaveSegment(saveSegmentCallback),
         onSaveFullBuffer(saveFullBufferCallback),
-        onCustomizeSaveButtons(customizeSaveButtonsCallback)
+        onCustomizeSaveButtons(customizeSaveButtonsCallback),
+        onCloudSettings(cloudSettingsCallback)
   {
     if (!parent) {
         qWarning("UIComponents: parent widget cannot be null");
@@ -152,6 +156,16 @@ namespace ReplayBufferPro
     initSaveButtons(buttonLayout);
     mainLayout->addLayout(buttonLayout);
 
+    mainLayout->addSpacing(12);
+    QHBoxLayout *cloudLayout = new QHBoxLayout();
+    cloudStatusLabel = new QLabel(obs_module_text("CloudNotConnected"), container);
+    cloudSettingsBtn = new QPushButton(obs_module_text("CloudSettings"), container);
+    cloudLayout->addWidget(cloudStatusLabel);
+    cloudLayout->addStretch();
+    cloudLayout->addWidget(cloudSettingsBtn);
+    if (onCloudSettings) QObject::connect(cloudSettingsBtn, &QPushButton::clicked, onCloudSettings);
+    mainLayout->addLayout(cloudLayout);
+
     mainLayout->addStretch();
     return container;
   }
@@ -240,6 +254,15 @@ namespace ReplayBufferPro
 
     updateSaveButtonLabels();
     toggleSaveButtons(secondsEdit ? secondsEdit->value() : Config::DEFAULT_BUFFER_LENGTH);
+  }
+
+  void UIComponents::updateCloudStatus(bool connected, std::size_t pending)
+  {
+    if (!cloudStatusLabel) return;
+    cloudStatusLabel->setText(QString("%1 · %2: %3")
+      .arg(obs_module_text(connected ? "CloudConnected" : "CloudNotConnected"))
+      .arg(obs_module_text("CloudPending"))
+      .arg(pending));
   }
 
   void UIComponents::updateSaveButtonLabels()

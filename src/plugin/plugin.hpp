@@ -33,6 +33,7 @@
 #include "managers/save-button-settings.hpp"
 #include "managers/replay-buffer-manager.hpp"
 #include "managers/hotkey-manager.hpp"
+#include "cloud/cloud-upload-manager.hpp"
 
 namespace ReplayBufferPro
 {
@@ -138,6 +139,7 @@ namespace ReplayBufferPro
     SaveButtonSettings *saveButtonSettings; ///< Save button settings manager
     ReplayBufferManager *replayManager; ///< Replay buffer manager
     HotkeyManager *hotkeyManager;       ///< Hotkey manager
+    Cloud::CloudUploadManager *cloudUploadManager; ///< Persistent background cloud uploader
     QTimer *settingsMonitorTimer;       ///< Timer for monitoring OBS settings changes
     int lastKnownBufferLength;          ///< Last known buffer length from OBS settings
 
@@ -176,6 +178,9 @@ namespace ReplayBufferPro
      * Shows error if buffer is not active.
      */
     void handleSaveFullBuffer();
+
+    /** Opens the compact Google Drive cloud settings dialog. */
+    void handleCloudSettings();
 
     /**
      * @brief Handles OBS frontend events for buffer state changes
