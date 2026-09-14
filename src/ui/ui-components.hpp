@@ -23,6 +23,7 @@
 // STL includes
 #include <vector>
 #include <functional>
+#include <cstddef>
 
 // Project includes
 #include "config/config.hpp"
@@ -51,7 +52,8 @@ namespace ReplayBufferPro
     UIComponents(QWidget *parent,
                  std::function<void(int)> saveSegmentCallback,
                  std::function<void()> saveFullBufferCallback,
-                 std::function<void()> customizeSaveButtonsCallback);
+                 std::function<void()> customizeSaveButtonsCallback,
+                 std::function<void()> cloudSettingsCallback);
 
     /**
      * @brief Destructor
@@ -90,6 +92,7 @@ namespace ReplayBufferPro
      * @return Pointer to the customize button
      */
     QPushButton *getCustomizeSaveButtonsBtn() const { return customizeSaveButtonsBtn; }
+    void updateCloudStatus(bool connected, std::size_t pending);
 
     /**
      * @brief Gets the buffer length debounce timer
@@ -140,6 +143,8 @@ namespace ReplayBufferPro
     QSpinBox *secondsEdit;                 ///< Buffer length control (1s to 6h)
     QPushButton *saveFullBufferBtn;         ///< Full buffer save trigger
     QPushButton *customizeSaveButtonsBtn;   ///< Customize save buttons trigger
+    QPushButton *cloudSettingsBtn;          ///< Opens cloud settings
+    QLabel *cloudStatusLabel;               ///< Connection and queue summary
     std::vector<QPushButton *> saveButtons; ///< Duration-specific save buttons
     QTimer *bufferLengthDebounceTimer;      ///< Prevents rapid setting updates
     std::vector<int> saveButtonDurations;   ///< Durations for save buttons
@@ -150,6 +155,7 @@ namespace ReplayBufferPro
     std::function<void(int)> onSaveSegment; ///< Callback for save segment button clicks
     std::function<void()> onSaveFullBuffer; ///< Callback for save full buffer button clicks
     std::function<void()> onCustomizeSaveButtons; ///< Callback for customizing save buttons
+    std::function<void()> onCloudSettings; ///< Callback for cloud settings
 
     //=========================================================================
     // INITIALIZATION
