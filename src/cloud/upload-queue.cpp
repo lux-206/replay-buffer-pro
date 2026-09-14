@@ -25,7 +25,8 @@ bool UploadQueue::load(std::string *error)
     if (error) *error = parseError.errorString().toStdString();
     return false;
   }
-  for (const QJsonValue &value : document.object().value("jobs").toArray()) {
+  const QJsonArray savedJobs = document.object().value("jobs").toArray();
+  for (const QJsonValue value : savedJobs) {
     const QJsonObject object = value.toObject();
     UploadJob job;
     job.id = object.value("id").toString().toStdString();
