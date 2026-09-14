@@ -9,7 +9,7 @@ The build system follows the [obs-plugintemplate](https://github.com/obsproject/
 - Project name and version are defined in `buildspec.json` (not directly in `CMakeLists.txt`).
 - C++ standard: C++17.
 - Sources: module entry, plugin, managers, UI, and utilities.
-- Links against OBS (libobs, obs-frontend-api), Qt6 (Widgets/Core), and FFmpeg libraries (avformat, avcodec, avutil).
+- Links against OBS (libobs, obs-frontend-api), Qt6 (Widgets/Core/Network), and FFmpeg libraries (avformat, avcodec, avutil). Windows also links `Crypt32` for DPAPI-protected cloud credentials.
 
 ### Key files
 

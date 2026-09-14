@@ -10,6 +10,7 @@ If you are new to the plugin, read in order:
 4. Settings + hotkeys: `reference/architecture/settings-and-hotkeys.md`
 5. Utilities + shared helpers: `reference/architecture/utilities.md`
 6. Build + localization: `reference/architecture/build-and-localization.md`
+7. Google Drive cloud clips: `reference/architecture/google-drive-cloud-clips.md`
 
 ## Runtime overview
 1. OBS loads the module and registers the dock widget.

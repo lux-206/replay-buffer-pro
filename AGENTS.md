@@ -52,6 +52,7 @@ This file is a concise handoff for agents working in the Replay Buffer Pro OBS p
 - `ReplayBufferManager` handles save requests and trimming.
 - `SettingsManager` reads/writes OBS profile config and updates output settings.
 - `HotkeyManager` registers per-duration hotkeys and persists bindings.
+- `CloudUploadManager` stages verified clips, persists a single-worker queue, and uploads through Google Drive.
 - `VideoTrimmer` trims using libavformat stream copy.
 
 ## Configuration and persistence
@@ -59,6 +60,14 @@ This file is a concise handoff for agents working in the Replay Buffer Pro OBS p
 - Config section is `AdvOut` for Advanced mode, otherwise `SimpleOutput`.
 - Hotkey bindings are stored in `hotkey_bindings.json` under the module config path.
 - Custom save button durations are stored in `save_button_settings.json` under the module config path.
+- Cloud settings and queue state live under `%LOCALAPPDATA%/OBSCloudClips`; OAuth material is DPAPI-encrypted on Windows.
+
+## Cloud clip flow
+1. The trim worker verifies and renames the final clip, then invokes its clip-ready callback.
+2. `CloudUploadManager` stages it in a private temporary directory and atomically persists an upload job.
+3. A separate worker refreshes OAuth, creates the dated Drive folder, and streams a resumable upload.
+4. Remote metadata and size are verified before the staged file is deleted.
+5. Failures retain the file and retry with bounded backoff; shutdown persists outstanding work.
 
 ## Build and localization
 - Build system follows the [obs-plugintemplate](https://github.com/obsproject/obs-plugintemplate) pattern.

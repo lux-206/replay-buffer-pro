@@ -103,6 +103,10 @@ Successes and failures also surface briefly in the OBS status bar via `StatusRep
 - `VideoTrimmer::trimToLastSeconds(...)`
 - `StatusReporter::showMessage(...)`
 
+## Google Drive handoff
+
+After a trimmed output has passed duration verification, received its final name, and source cleanup has been attempted, `ReplayBufferManager` invokes an optional clip-ready callback on its trim worker. The plugin connects it to `CloudUploadManager`. Queue persistence happens outside the OBS frontend callback and all network traffic runs on the cloud worker. With cloud disabled, the original flow is unchanged.
+
 ## Related code
 - `src/managers/replay-buffer-manager.hpp`
 - `src/managers/replay-buffer-manager.cpp`
